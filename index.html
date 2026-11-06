@@ -92,7 +92,7 @@
   .dlg-head { display:flex; align-items:center; justify-content:space-between; padding:16px 18px 8px; }
   .dlg-head h2 { margin:0; font-size:1.05rem; }
   .dlg-body { padding:0 18px 18px; overflow:auto; max-height:calc(85vh - 64px); }
-  input[type=text], input[type=search], input:not([type]), input[type=password] { width:100%; padding:10px 12px; font:inherit; color:inherit;
+  input[type=text], input[type=search], input:not([type]) { width:100%; padding:10px 12px; font:inherit; color:inherit;
     background:transparent; border:1px solid var(--border); border-radius:10px; outline:0; }
   input:focus { border-color:var(--accent); }
   .list { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 4px; }
@@ -102,25 +102,24 @@
   .chip small { color:var(--muted); margin-inline-start:4px; }
   .sect { margin:18px 0 6px; font-size:.75rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
   .row { display:flex; gap:8px; }
-  .row input:first-child { flex:1; }
+  .row input:first-child { max-width:130px; }
   .hint { font-size:.8rem; color:var(--muted); margin:6px 0 0; }
-  .status-line { font-size:.8rem; color:var(--muted); margin:6px 0 0; }
 
   footer { margin-top:28px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;
     color:var(--muted); font-size:.82rem; }
   details { width:100%; }
   summary { cursor:pointer; }
-  details input, details select { margin-top:8px; }
+  details input { margin-top:8px; }
 </style>
 </head>
 <body>
-<div id="banner">DeepL funktioniert nicht mehr. Es wird ein anderer Übersetzer verwendet.</div>
+<div id="banner" hidden>DeepL funktioniert nicht mehr. Es wird ein anderer Übersetzer verwendet.</div>
 <main>
   <header class="top">
     <div class="logo">DE</div>
     <div>
       <h1>Deutsch → Welt</h1>
-      <div class="sub">Schreibe auf Deutsch und drücke Enter – die Übersetzungen erscheinen darunter. Alles läuft lokal im Browser, kein Server nötig.</div>
+      <div class="sub">Schreibe auf Deutsch und drücke Enter – die Übersetzungen erscheinen darunter</div>
     </div>
   </header>
 
@@ -140,18 +139,9 @@
 
   <footer>
     <details id="settings">
-      <summary>DeepL-Einstellungen (optional)</summary>
-      <input id="deeplKey" type="password" placeholder="DeepL API key, z. B. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:fx" autocomplete="off" autocapitalize="off" spellcheck="false">
-      <div class="row" style="margin-top:8px">
-        <select id="deeplEndpoint">
-          <option value="free">Free API</option>
-          <option value="pro">Pro API</option>
-        </select>
-        <button class="btn primary" id="saveDeepl" type="button">Speichern</button>
-        <button class="btn ghost" id="clearDeepl" type="button">Leeren</button>
-      </div>
-      <p id="deeplStatus" class="status-line">DeepL ist im reinen Browser-Modus nicht nutzbar, da die DeepL-API keine CORS-Header sendet. Verwendet wird MyMemory als kostenloser Fallback.</p>
-      <p class="hint">Der Schlüssel bleibt nur in diesem Browser in localStorage. Auf öffentlichen Geräten nicht speichern. Wenn DeepL nicht erreichbar ist, wird automatisch MyMemory verwendet.</p>
+      <summary>Proxy-Einstellungen</summary>
+      <input id="proxy" placeholder="https://dein.worker.workers.dev" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <p class="hint">Cloudflare Worker deployieren, URL hier eintragen. Der DeepL-Schlüssel bleibt im Worker-Secret.</p>
     </details>
     <button class="btn ghost" id="reset" type="button">Standardsprachen wiederherstellen</button>
   </footer>
@@ -176,6 +166,7 @@
 </dialog>
 
 <script>
+// ---------- Sprachkatalog (DeepL-Code → Name in der Sprache selbst) ----------
 const CATALOG = [
   ["EN-GB","English (UK)"],["EN-US","English (US)"],["RU","Русский"],["UK","Українська"],["ES","Español"],
   ["ES-419","Español (LatAm)"],["AR","العربية"],["FA","فارسی"],["TR","Türkçe"],["KMR","Kurdî (Kurmancî)"],
@@ -200,64 +191,24 @@ const CATALOG = [
 const DEFAULTS = ["EN-GB","RU","UK","ES","AR","FA","TR","KMR","OM","UR"]
   .map(c => CATALOG.find(l => l.code === c));
 
+// ---------- Speicher (localStorage, abgesichert) ----------
 const store = {
   get(k, fb) { try { const v = localStorage.getItem(k); return v === null ? fb : JSON.parse(v); } catch { return fb; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
-
 let langs = store.get("dt.langs.v2", null);
 if (!Array.isArray(langs) || !langs.length) langs = DEFAULTS.map(l => ({...l}));
-
-const DEFAULT_DEEPL_KEY = "ea63693b-910c-43ca-a7e8-893d53045e97:fx";
-let deeplKey = store.get("dt.deeplKey", null);
-if (deeplKey === null) deeplKey = DEFAULT_DEEPL_KEY;
-let deeplEndpoint = store.get("dt.deeplEndpoint", "free");
+let proxyUrl = store.get("dt.proxy", "");
 
 const $ = id => document.getElementById(id);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const src = $("src"), grid = $("grid");
 const IDLE = "Enter = übersetzen · Shift+Enter = neue Zeile";
 
-function syncDeeplStatus() {
-  const input = $("deeplKey");
-  const endpoint = $("deeplEndpoint");
-  const status = $("deeplStatus");
-  if (input && deeplKey) input.value = deeplKey;
-  if (endpoint) endpoint.value = deeplEndpoint;
-  if (status) {
-    if (deeplKey) {
-      status.textContent = "Key gespeichert, aber DeepL ist im reinen Browser-Modus nicht nutzbar. Fallback: MyMemory.";
-    } else {
-      status.textContent = "DeepL ist im reinen Browser-Modus nicht nutzbar, da die DeepL-API keine CORS-Header sendet. Verwendet wird MyMemory als kostenloser Fallback.";
-    }
-  }
-}
-syncDeeplStatus();
-
-$("saveDeepl")?.addEventListener("click", () => {
-  const key = $("deeplKey")?.value.trim() || "";
-  const endpoint = $("deeplEndpoint")?.value || "free";
-  if (!key) {
-    toast("Bitte DeepL-Key eingeben");
-    return;
-  }
-  deeplKey = key;
-  deeplEndpoint = endpoint;
-  store.set("dt.deeplKey", deeplKey);
-  store.set("dt.deeplEndpoint", deeplEndpoint);
-  syncDeeplStatus();
-  toast("DeepL-Key gespeichert");
-});
-
-$("clearDeepl")?.addEventListener("click", () => {
-  deeplKey = "";
-  deeplEndpoint = "free";
-  store.set("dt.deeplKey", deeplKey);
-  store.set("dt.deeplEndpoint", deeplEndpoint);
-  if ($("deeplKey")) $("deeplKey").value = "";
-  if ($("deeplEndpoint")) $("deeplEndpoint").value = "free";
-  syncDeeplStatus();
-  toast("DeepL-Key entfernt");
+$("proxy").value = proxyUrl;
+$("proxy").addEventListener("change", e => {
+  proxyUrl = e.target.value.trim().replace(/\/+$/, "");
+  store.set("dt.proxy", proxyUrl);
 });
 
 function setStatus(msg, isErr) {
@@ -268,13 +219,8 @@ function setStatus(msg, isErr) {
 setStatus(IDLE);
 const setBanner = on => { $("banner").hidden = !on; };
 
-function myMemoryTarget(code) {
-  const raw = String(code).toLowerCase();
-  if (raw.startsWith("zh")) return "zh-CN";
-  return raw.split("-")[0];
-}
-
-const results = new Map();
+// ---------- Darstellung ----------
+const results = new Map();   // code -> {text, state}
 
 function render() {
   grid.textContent = "";
@@ -324,97 +270,52 @@ function paint(code) {
   out.textContent = r && r.state !== "loading" ? r.text : "";
 }
 
+// ---------- Übersetzung ----------
 let controller;
-const cache = new Map();
+const cache = new Map();   // nur echte DeepL-Ergebnisse: gleicher Text kostet kein zweites Mal Zeichen
 
-function deeplHost(key) {
-  return key.endsWith(":fx") ? "api-free.deepl.com" : "api.deepl.com";
-}
-
-async function viaDeepL(text, code, key, endpointOverride, signal) {
-  const host = endpointOverride === "pro" ? "api.deepl.com" : deeplHost(key);
-  const response = await fetch(`https://${host}/v2/translate`, {
-    method: "POST",
-    headers: {
-      "Authorization": `DeepL-Auth-Key ${key}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      text: [text],
-      source_lang: "DE",
-      target_lang: code,
-      model_type: "prefer_quality_optimized",
-    }),
-    signal,
-  });
-  if (!response.ok) {
-    const message = await response.text();
-    const error = new Error(message || `DeepL HTTP ${response.status}`);
-    error.status = response.status;
-    throw error;
+async function callProxy(text, code, signal) {
+  let lastErr;
+  for (let i = 0; i < 2; i++) {
+    try {
+      const r = await fetch(proxyUrl, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, target_lang: code }), signal,
+      });
+      let data = {};
+      try { data = await r.json(); } catch {}
+      if (!r.ok) { const e = new Error(data.error || data.message || ("HTTP " + r.status)); e.status = r.status; throw e; }
+      if (!data.translations || !data.translations[0]) throw new Error("Leere Antwort");
+      return data;
+    } catch (e) {
+      if (e.name === "AbortError") throw e;
+      lastErr = e;
+      if (e.status && e.status < 500) break;   // Fehler der Anfrage: kein Wiederholen
+      await sleep(600);
+    }
   }
-  const data = await response.json();
-  const output = data && data.translations && data.translations[0] && data.translations[0].text;
-  if (typeof output !== "string" || !output) throw new Error("DeepL: ungültige Antwort");
-  return output;
+  throw lastErr;
 }
 
-async function viaMyMemory(text, code, signal) {
-  const target = myMemoryTarget(code);
-  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${encodeURIComponent("de|" + target)}`;
-  const response = await fetch(url, { signal });
-  if (!response.ok) throw new Error(`MyMemory HTTP ${response.status}`);
-  const data = await response.json();
-  if (data.responseStatus !== 200) throw new Error(data.responseDetails || "MyMemory Fehler");
-  return data.responseData.translatedText;
-}
-
+// Rückgabe: "deepl" | "fallback" | "error" | "abort"
 async function translateOne(text, code, signal) {
   const key = code + "\n" + text;
-  if (cache.has(key)) {
-    results.set(code, { state: "ok", text: cache.get(key) });
-    paint(code);
-    return "deepl";
-  }
-  results.set(code, { state: "loading", text: "" });
-  paint(code);
-
-  let provider = "fallback";
-  let output = "";
-  let usedFallback = false;
-
-  if (deeplKey) {
-    try {
-      output = await viaDeepL(text, code, deeplKey, deeplEndpoint, signal);
-      provider = "deepl";
-    } catch (error) {
-      if (error.name === "AbortError") return "abort";
-      usedFallback = true;
-    }
-  } else {
-    usedFallback = true;
-  }
-
-  if (!output) {
-    try {
-      output = await viaMyMemory(text, code, signal);
-      provider = "fallback";
-      usedFallback = true;
-    } catch (error) {
-      if (error.name === "AbortError") return "abort";
-      results.set(code, { state: "err", text: "Fehler: " + error.message });
-      paint(code);
-      return "error";
-    }
-  }
-
-  results.set(code, { state: "ok", text: output });
-  paint(code);
-  if (provider === "deepl") {
+  if (cache.has(key)) { results.set(code, { state: "ok", text: cache.get(key) }); paint(code); return "deepl"; }
+  results.set(code, { state: "loading", text: "" }); paint(code);
+  try {
+    const data = await callProxy(text, code, signal);
+    const t = data.translations[0].text;
+    results.set(code, { state: "ok", text: t }); paint(code);
+    if (data.provider === "fallback") return "fallback";
     if (cache.size > 300) cache.clear();
-    cache.set(key, output);
+    cache.set(key, t);
+    return "deepl";
+  } catch (e) {
+    if (e.name === "AbortError") return "abort";
+    results.set(code, { state: "err", text: "Fehler: " + (e.status ? e.message : "Proxy nicht erreichbar") });
+    paint(code);
+    return "error";
   }
-  return usedFallback ? "fallback" : "deepl";
 }
 
 function updateBanner(list) {
@@ -425,12 +326,8 @@ function updateBanner(list) {
 async function translateAll() {
   const text = src.value.trim();
   if (controller) controller.abort();
-  if (!text) {
-    results.clear();
-    langs.forEach(l => paint(l.code));
-    setStatus(IDLE);
-    return;
-  }
+  if (!text) { results.clear(); langs.forEach(l => paint(l.code)); setStatus(IDLE); return; }
+  if (!proxyUrl) { setStatus("Bitte Proxy-URL unten eintragen", true); return; }
   controller = new AbortController();
   const c = controller;
   setStatus("Übersetze …");
@@ -456,6 +353,7 @@ $("clear").onclick = () => {
   results.clear(); langs.forEach(l => paint(l.code)); setStatus(IDLE); src.focus();
 };
 
+// ---------- Dialog zum Hinzufügen ----------
 const dlg = $("dlg");
 function openDialog() { $("q").value = ""; $("cc").value = ""; $("cn").value = ""; fillCatalog(); dlg.showModal(); $("q").focus(); }
 $("dlg-close").onclick = () => dlg.close();
@@ -487,7 +385,7 @@ function addLang(l) {
   store.set("dt.langs.v2", langs);
   render();
   const text = src.value.trim();
-  if (text) {
+  if (text && proxyUrl) {
     if (!controller || controller.signal.aborted) controller = new AbortController();
     translateOne(text, code, controller.signal).then(r => updateBanner([r]));
   }
