@@ -1,40 +1,57 @@
 # Deutsch → Welt
 
-Statischer Übersetzer für GitHub Pages: Deutsch → viele Sprachen.
+Deutsch → viele Sprachen.
 
-Es gibt **keinen Server und keinen Worker**. Die ganze Logik läuft im Browser.
+Diese Version nutzt einen **Cloudflare Worker** als Proxy für DeepL. Der DeepL-Key bleibt in Cloudflare, nicht im Browser.
 
-## Was der Translator macht
+## Architektur
 
-- Deutsche Texte werden pro Zielsprache übersetzt.
-- DeepL wird verwendet, wenn im Browser ein DeepL-Key gespeichert wurde.
-- Fallback ist MyMemory, also auch ohne DeepL-Key nutzbar.
-- Wenn DeepL fehlschlägt, wird automatisch MyMemory verwendet und oben ein Banner angezeigt:
-  `DeepL funktioniert nicht mehr. Es wird ein anderer Übersetzer verwendet.`
-- Sprachen sind erweiterbar, Ergebnisse werden kurzzeitig im Arbeitsspeicher/Browser force-verwaltet. Der DeepL-Key bleibt nur in `localStorage`.
+- Frontend: GitHub Pages (`index.html`)
+- Backend: Cloudflare Worker (`worker.js`)
+- DeepL: Workers-Secret `DEEPL_KEY`
+- Fallback: Cloudflare Workers AI (`m2m100`)
 
-## Verwendung
+## GitHub Secrets für autodeploy
 
-1. Seite öffnen.
-2. Text eingeben und Enter drücken.
-3. Optional in `DeepL-Einstellungen` einen DeepL-Key eintragen.
+In GitHub: `Settings → Secrets and variables → Actions` anlegen:
 
-## DeepL-Key lokal speichern
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+- `DEEPL_KEY`
 
-Der Key wird nur im aktuellen Browser gespeichert. Auf öffentlichen Geräten nicht speichern.
+### Cloudflare API Token Rechte
+Erstelle ein API Token mit mindestens:
+- Account → Workers Scripts → Edit
+- Account → Workers AI → Use
+- Account → Workers R2? nicht nötig
+- Falls Worker unter einer Zone läuft: Zone → Workers Routes → Edit, kann nötig sein.
 
-## GitHub Pages
+### DeepL Key
+Setze ihn als Secret `DEEPL_KEY` mit dem Wert, z. B. einem Free-Key `...:fx`.
 
-Der Standalone-Stand kann direkt von `main` / root veröffentlicht werden.
-Die Dateien sind:
+## Lokale Entwicklung
 
-- `index.html`
-- `.gitignore`
-
-Dann genügt:
-
-```text
-Settings → Pages → Deploy from a branch → main → /(root)
+```bash
+npm install
+cp .dev.vars.example .dev.vars
+# .dev.vars ausfüllen
+npm run dev
 ```
 
-Keine Umgebungsvariablen, kein Worker, kein Cloudflare und keine Paketinstallationen nötig.
+## Frontend-URL Worker eintragen
+
+Nach dem ersten successful GitHub Action:
+1. In Actions-Log die Worker-URL kopieren (meistens `https://german-translator-proxy.<subdomain>.workers.dev`).
+2. Auf der Website unten `Proxy-Einstellungen` öffnen.
+3. URL eintragen und Enter drücken.
+
+## Arbeitsablauf nach dem Setup
+
+1. Du schreibst: Ändere etwas.
+2. Der Agent ändert Code und pusht.
+3. GitHub Actions deployt Worker automatisch.
+4. Die Website ruft Worker auf und nutzt DeepL, bei Fehlern Workers-AI-Fallback.
+
+## CORS
+
+`ALLOWED_ORIGIN` ist in `wrangler.toml` auf `"*"` gesetzt. Für Produktion kannst du es später auf `https://vld-prod.github.io` beschränken.

@@ -1,0 +1,46 @@
+name: Deploy Cloudflare Worker
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - worker.js
+      - wrangler.toml
+      - package.json
+      - .github/workflows/deploy-worker.yml
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy Worker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Wrangler
+        run: npm install -g wrangler@latest
+
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: wrangler deploy --name german-translator-proxy
+
+      - name: Set DeepL secret
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          DEEPL_KEY: ${{ secrets.DEEPL_KEY }}
+        run: |
+          if [ -z "$DEEPL_KEY" ]; then
+            echo "DEEPL_KEY secret is missing, skipping secret update"
+            exit 0
+          fi
+          printf '%s' "$DEEPL_KEY" | wrangler secret put DEEPL_KEY --name german-translator-proxy

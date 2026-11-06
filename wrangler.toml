@@ -1,0 +1,9 @@
+name = "german-translator-proxy"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+[vars]
+ALLOWED_ORIGIN = "*"
+
+[ai]
+binding = "AI"
