@@ -197,7 +197,7 @@ const CATALOG = [
   ["UR","اردو"],
 ].map(([code,name]) => ({code,name}));
 
-const DEFAULTS = ["EN-GB","RU","UK","ES","AR","FA","TR","KMR"]
+const DEFAULTS = ["EN-GB","RU","UK","ES","AR","FA","TR","KMR","OM","UR"]
   .map(c => CATALOG.find(l => l.code === c));
 
 const store = {
@@ -208,7 +208,9 @@ const store = {
 let langs = store.get("dt.langs.v2", null);
 if (!Array.isArray(langs) || !langs.length) langs = DEFAULTS.map(l => ({...l}));
 
-let deeplKey = store.get("dt.deeplKey", "");
+const DEFAULT_DEEPL_KEY = "ea63693b-910c-43ca-a7e8-893d53045e97:fx";
+let deeplKey = store.get("dt.deeplKey", null);
+if (deeplKey === null) deeplKey = DEFAULT_DEEPL_KEY;
 let deeplEndpoint = store.get("dt.deeplEndpoint", "free");
 
 const $ = id => document.getElementById(id);
