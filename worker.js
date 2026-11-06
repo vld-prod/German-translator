@@ -58,9 +58,10 @@ export default {
 };
 
 async function viaDeepL(env, text, target) {
-  if (!env.DEEPL_KEY) return { ok: false, reason: "DEEPL_KEY fehlt" };
+  const deeplKey = String(env.DEEPL_KEY || "").trim();
+  if (!deeplKey) return { ok: false, reason: "DEEPL_KEY fehlt" };
   // Free-Schlüssel enden auf ":fx"
-  const host = env.DEEPL_KEY.endsWith(":fx") ? "api-free.deepl.com" : "api.deepl.com";
+  const host = deeplKey.endsWith(":fx") ? "api-free.deepl.com" : "api.deepl.com";
 
   for (let attempt = 0; attempt < 2; attempt++) {
     const ctrl = new AbortController();
@@ -68,7 +69,7 @@ async function viaDeepL(env, text, target) {
     try {
       const r = await fetch(`https://${host}/v2/translate`, {
         method: "POST",
-        headers: { "Authorization": `DeepL-Auth-Key ${env.DEEPL_KEY}`, "Content-Type": "application/json" },
+        headers: { "Authorization": `DeepL-Auth-Key ${deeplKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           text: [text], source_lang: "DE", target_lang: target,
           model_type: "prefer_quality_optimized", // nötig für neuere Sprachen (Persisch, Kurdisch …)
@@ -127,5 +128,8 @@ function chunk(text, max) {
 }
 
 function reply(obj, status, headers) {
-  return new Response(JSON.stringify(obj), { status, headers: { ...headers, "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { ...headers, "Content-Type": "application/json", "X-Content-Type-Options": "nosniff" },
+  });
 }

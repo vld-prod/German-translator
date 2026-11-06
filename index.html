@@ -140,7 +140,8 @@
   <footer>
     <details id="settings">
       <summary>Proxy-Einstellungen</summary>
-      <input id="proxy" placeholder="https://deepl-proxy.dein-name.workers.dev" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <input id="proxy" placeholder="https://dein.worker.workers.dev" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <p class="hint">Cloudflare Worker deployieren, URL hier eintragen. Der DeepL-Schlüssel bleibt im Worker-Secret.</p>
     </details>
     <button class="btn ghost" id="reset" type="button">Standardsprachen wiederherstellen</button>
   </footer>
@@ -197,7 +198,7 @@ const store = {
 };
 let langs = store.get("dt.langs.v2", null);
 if (!Array.isArray(langs) || !langs.length) langs = DEFAULTS.map(l => ({...l}));
-let proxyUrl = store.get("dt.proxy", "https://deepl-proxy.dordor167.workers.dev");
+let proxyUrl = store.get("dt.proxy", "");
 
 const $ = id => document.getElementById(id);
 const sleep = ms => new Promise(r => setTimeout(r, ms));

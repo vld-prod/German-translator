@@ -1,0 +1,13 @@
+name = "german-translator-proxy"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+# Optional, empfohlen für ein echtes Deployment:
+# Setze die URL des Frontends, damit nur diese Seite den Proxy nutzen darf.
+# Lässt sich auch als Secret/Variable in Cloudflare setzen.
+[vars]
+ALLOWED_ORIGIN = "*"
+
+# Cloudflare Workers AI als Fallback-Übersetzer.
+[ai]
+binding = "AI"
