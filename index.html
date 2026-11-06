@@ -114,7 +114,7 @@
 </style>
 </head>
 <body>
-<div id="banner" hidden>DeepL funktioniert nicht mehr. Es wird ein anderer Übersetzer verwendet.</div>
+<div id="banner">DeepL funktioniert nicht mehr. Es wird ein anderer Übersetzer verwendet.</div>
 <main>
   <header class="top">
     <div class="logo">DE</div>
@@ -150,7 +150,7 @@
         <button class="btn primary" id="saveDeepl" type="button">Speichern</button>
         <button class="btn ghost" id="clearDeepl" type="button">Leeren</button>
       </div>
-      <p id="deeplStatus" class="status-line">Kein DeepL-Key gespeichert: es wird MyMemory verwendet.</p>
+      <p id="deeplStatus" class="status-line">DeepL ist im reinen Browser-Modus nicht nutzbar, da die DeepL-API keine CORS-Header sendet. Verwendet wird MyMemory als kostenloser Fallback.</p>
       <p class="hint">Der Schlüssel bleibt nur in diesem Browser in localStorage. Auf öffentlichen Geräten nicht speichern. Wenn DeepL nicht erreichbar ist, wird automatisch MyMemory verwendet.</p>
     </details>
     <button class="btn ghost" id="reset" type="button">Standardsprachen wiederherstellen</button>
@@ -226,9 +226,9 @@ function syncDeeplStatus() {
   if (endpoint) endpoint.value = deeplEndpoint;
   if (status) {
     if (deeplKey) {
-      status.textContent = "DeepL-Key gespeichert. DeepL wird direkt im Browser verwendet.";
+      status.textContent = "Key gespeichert, aber DeepL ist im reinen Browser-Modus nicht nutzbar. Fallback: MyMemory.";
     } else {
-      status.textContent = "Kein DeepL-Key gespeichert: Fallback auf MyMemory.";
+      status.textContent = "DeepL ist im reinen Browser-Modus nicht nutzbar, da die DeepL-API keine CORS-Header sendet. Verwendet wird MyMemory als kostenloser Fallback.";
     }
   }
 }
@@ -429,7 +429,6 @@ async function translateAll() {
     results.clear();
     langs.forEach(l => paint(l.code));
     setStatus(IDLE);
-    setBanner(false);
     return;
   }
   controller = new AbortController();
@@ -454,7 +453,7 @@ $("go").onclick = translateAll;
 $("clear").onclick = () => {
   src.value = ""; $("count").textContent = "0"; autoGrow();
   if (controller) controller.abort();
-  results.clear(); langs.forEach(l => paint(l.code)); setStatus(IDLE); setBanner(false); src.focus();
+  results.clear(); langs.forEach(l => paint(l.code)); setStatus(IDLE); src.focus();
 };
 
 const dlg = $("dlg");
