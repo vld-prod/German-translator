@@ -198,7 +198,8 @@ const store = {
 };
 let langs = store.get("dt.langs.v2", null);
 if (!Array.isArray(langs) || !langs.length) langs = DEFAULTS.map(l => ({...l}));
-let proxyUrl = store.get("dt.proxy", "");
+const DEFAULT_PROXY_URL = "https://german-translator-proxy.dordor167.workers.dev";
+let proxyUrl = store.get("dt.proxy", DEFAULT_PROXY_URL) || DEFAULT_PROXY_URL;
 
 const $ = id => document.getElementById(id);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
