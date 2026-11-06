@@ -1,62 +1,40 @@
-# German → World Translator
+# Deutsch → Welt
 
-Статический фронтенд (`index.html`) + Cloudflare Worker (`worker.js`) как прокси для DeepL.
+Statischer Übersetzer für GitHub Pages: Deutsch → viele Sprachen.
 
-- DeepL используется как основной переводчик.
-- Cloudflare Workers AI (`m2m100`) используется как бесплатный fallback, если DeepL недоступен или ключ не настроен.
-- DeepL API key **не хранится в фронтенде и не попадает в репозиторий**. Он задаётся только как Secret в Cloudflare Worker.
+Es gibt **keinen Server und keinen Worker**. Die ganze Logik läuft im Browser.
 
-## Файлы
+## Was der Translator macht
 
-- `index.html` — интерфейс и логика фронтенда.
-- `worker.js` — Cloudflare Worker API, CORS, DeepL, fallback.
-- `wrangler.toml` — конфигурация Worker.
-- `.dev.vars.example` — пример локальных переменных для `wrangler dev`.
-- `package.json` — скрипты для локальной разработки и деплоя.
+- Deutsche Texte werden pro Zielsprache übersetzt.
+- DeepL wird verwendet, wenn im Browser ein DeepL-Key gespeichert wurde.
+- Fallback ist MyMemory, also auch ohne DeepL-Key nutzbar.
+- Wenn DeepL fehlschlägt, wird automatisch MyMemory verwendet und oben ein Banner angezeigt:
+  `DeepL funktioniert nicht mehr. Es wird ein anderer Übersetzer verwendet.`
+- Sprachen sind erweiterbar, Ergebnisse werden kurzzeitig im Arbeitsspeicher/Browser force-verwaltet. Der DeepL-Key bleibt nur in `localStorage`.
 
-## Локальная разработка
+## Verwendung
 
-```bash
-npm install
-cp .dev.vars.example .dev.vars
-# заполни .dev.vars
-npm run dev
+1. Seite öffnen.
+2. Text eingeben und Enter drücken.
+3. Optional in `DeepL-Einstellungen` einen DeepL-Key eintragen.
+
+## DeepL-Key lokal speichern
+
+Der Key wird nur im aktuellen Browser gespeichert. Auf öffentlichen Geräten nicht speichern.
+
+## GitHub Pages
+
+Der Standalone-Stand kann direkt von `main` / root veröffentlicht werden.
+Die Dateien sind:
+
+- `index.html`
+- `.gitignore`
+
+Dann genügt:
+
+```text
+Settings → Pages → Deploy from a branch → main → /(root)
 ```
 
-`wrangler dev` запустит локальный Worker, обычно на `http://127.0.0.1:8787`.
-
-Во фронтенде в footer укажи этот URL как Proxy-URL.
-
-## Деплой Worker
-
-```bash
-npx wrangler secret put DEEPL_KEY
-npm run deploy
-```
-
-Обязательные Cloudflare-ресурсы:
-
-- Secret: `DEEPL_KEY`
-- Binding: `AI` → Workers AI, переменное имя `AI`
-- Variable: `ALLOWED_ORIGIN` → URL фронтенда или `*`
-
-Рекомендуется задать `ALLOWED_ORIGIN` на URL сайта, иначе любой может использовать прокси.
-
-## Деплой фронтенда
-
-Фронтенд можно хостить на GitHub Pages. В footer нужно вписать URL задеплоенного Worker.
-
-## Как работает перевод
-
-1. Браузер отправляет `{ text, target_lang }` в Worker.
-2. Worker вызывает DeepL `/v2/translate`, source_lang фиксирован `DE`.
-3. Если DeepL возвращает 429/5xx/timeout/сеть — один повтор.
-4. При ошибках Worker использует Cloudflare Workers AI по чанкам текста.
-5. Ответ содержит `provider: "deepl"` или `provider: "fallback"`.
-
-## Безопасность
-
-- Не добавляй `DEEPL_KEY` в `index.html`, `.dev.vars`, логи или коммиты.
-- deep-free ключи оканчиваются на `:fx`; остальные считаются pro.
-- `ALLOWED_ORIGIN = "*" удобен для теста, но для продакшена лучше указать конкретный origin.
-- Workers сохраняют секрет изолированно в Cloudflare; репозиторий содержит только код.
+Keine Umgebungsvariablen, kein Worker, kein Cloudflare und keine Paketinstallationen nötig.
