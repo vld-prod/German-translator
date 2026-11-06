@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deutsch → Welt</title>
+<style>
+  :root {
+    --bg1:#eef2ff; --bg2:#fdf2f8;
+    --card:rgba(255,255,255,.78); --card-solid:#fff;
+    --text:#161a23; --muted:#667085; --border:rgba(20,30,60,.10);
+    --accent:#4f46e5; --accent2:#9333ea; --danger:#e5484d;
+    --shadow:0 1px 2px rgba(16,24,40,.05), 0 8px 24px -8px rgba(16,24,40,.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg1:#0e1020; --bg2:#1a1030;
+      --card:rgba(30,33,50,.72); --card-solid:#1c1f30;
+      --text:#eceef7; --muted:#9aa1b9; --border:rgba(255,255,255,.09);
+      --accent:#818cf8; --accent2:#c084fc; --danger:#ff6b70;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px -10px rgba(0,0,0,.6);
+    }
+  }
+  * { box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body {
+    margin:0; min-height:100vh; color:var(--text);
+    font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans","Noto Sans Arabic",sans-serif;
+    background:
+      radial-gradient(1000px 500px at 10% -10%, color-mix(in srgb,var(--accent) 18%,transparent), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, color-mix(in srgb,var(--accent2) 16%,transparent), transparent 60%),
+      linear-gradient(180deg,var(--bg1),var(--bg2));
+    background-attachment:fixed;
+  }
+  #banner { position:sticky; top:0; z-index:50; padding:5px 12px; text-align:center; font-size:.8rem; font-weight:600;
+    color:#3d2a00; background:#fbbf24; }
+  #banner[hidden] { display:none; }
+  main { max-width:1000px; margin:0 auto; padding:32px 16px 72px; }
+  header.top { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+  .logo { width:40px; height:40px; border-radius:12px; display:grid; place-items:center; color:#fff; font-weight:700;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow); }
+  h1 { font-size:1.35rem; margin:0; letter-spacing:-.01em; }
+  .sub { color:var(--muted); font-size:.88rem; }
+
+  .panel { background:var(--card); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border:1px solid var(--border); border-radius:18px; box-shadow:var(--shadow); }
+  .source { padding:14px 14px 10px; }
+  .source label { display:flex; justify-content:space-between; align-items:center; font-size:.78rem; font-weight:600;
+    letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+  .flag { color:var(--accent); }
+  textarea { display:block; width:100%; height:calc(2 * 1.55em + 8px); min-height:calc(2 * 1.55em + 8px); max-height:50vh;
+    resize:vertical; padding:4px; font:inherit; font-size:1.08rem; line-height:1.55;
+    color:inherit; background:transparent; border:0; outline:0; }
+  textarea::placeholder { color:var(--muted); opacity:.7; }
+  .bar { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:6px; padding-top:8px;
+    border-top:1px solid var(--border); color:var(--muted); font-size:.8rem; }
+  .bar .btns { display:flex; gap:8px; flex-shrink:0; }
+  #status.err { color:var(--danger); }
+
+  .btn { font:inherit; font-size:.85rem; cursor:pointer; color:var(--text); background:var(--card-solid);
+    border:1px solid var(--border); border-radius:10px; padding:6px 12px; transition:.15s; }
+  .btn:hover { border-color:var(--accent); color:var(--accent); }
+  .btn.ghost { background:transparent; }
+  .btn.primary { color:#fff; border:0; background:linear-gradient(135deg,var(--accent),var(--accent2)); font-weight:600; }
+  .btn.primary:hover { color:#fff; filter:brightness(1.08); }
+
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr)); gap:14px; margin-top:18px; }
+  .card { padding:14px 16px 16px; display:flex; flex-direction:column; gap:8px; transition:transform .15s; }
+  .card:hover { transform:translateY(-2px); }
+  .card header { display:flex; align-items:center; gap:8px; }
+  .name { font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .code { font-size:.68rem; font-weight:700; letter-spacing:.06em; padding:2px 7px; border-radius:99px;
+    color:var(--accent); background:color-mix(in srgb,var(--accent) 12%,transparent); }
+  .icon { cursor:pointer; border:0; background:transparent; color:var(--muted); width:28px; height:28px;
+    border-radius:8px; font-size:.95rem; line-height:1; }
+  .icon:hover { background:color-mix(in srgb,var(--text) 8%,transparent); color:var(--text); }
+  .icon.del:hover { color:var(--danger); }
+  .out { white-space:pre-wrap; word-break:break-word; min-height:1.6em; font-size:1.25rem; line-height:1.5; unicode-bidi:plaintext; }
+  .out.loading { color:var(--muted); }
+  .out.loading::after { content:"…"; animation:blink 1s infinite; }
+  .out.err { color:var(--danger); font-size:.9rem; }
+  @keyframes blink { 50% { opacity:.2; } }
+
+  .add-card { cursor:pointer; min-height:110px; align-items:center; justify-content:center; color:var(--muted);
+    border-style:dashed; background:transparent; font:inherit; }
+  .add-card:hover { color:var(--accent); border-color:var(--accent); }
+  .add-card .plus { font-size:1.6rem; line-height:1; }
+
+  dialog { width:min(520px,calc(100% - 24px)); max-height:85vh; padding:0; border:1px solid var(--border);
+    border-radius:20px; background:var(--card-solid); color:var(--text); box-shadow:0 30px 80px -20px rgba(0,0,0,.5); }
+  dialog::backdrop { background:rgba(10,12,25,.5); backdrop-filter:blur(3px); }
+  .dlg-head { display:flex; align-items:center; justify-content:space-between; padding:16px 18px 8px; }
+  .dlg-head h2 { margin:0; font-size:1.05rem; }
+  .dlg-body { padding:0 18px 18px; overflow:auto; max-height:calc(85vh - 64px); }
+  input[type=text], input[type=search], input:not([type]) { width:100%; padding:10px 12px; font:inherit; color:inherit;
+    background:transparent; border:1px solid var(--border); border-radius:10px; outline:0; }
+  input:focus { border-color:var(--accent); }
+  .list { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 4px; }
+  .chip { cursor:pointer; font:inherit; font-size:.88rem; color:var(--text); background:transparent;
+    border:1px solid var(--border); border-radius:99px; padding:5px 12px; }
+  .chip:hover { border-color:var(--accent); color:var(--accent); }
+  .chip small { color:var(--muted); margin-inline-start:4px; }
+  .sect { margin:18px 0 6px; font-size:.75rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  .row { display:flex; gap:8px; }
+  .row input:first-child { max-width:130px; }
+  .hint { font-size:.8rem; color:var(--muted); margin:6px 0 0; }
+
+  footer { margin-top:28px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;
+    color:var(--muted); font-size:.82rem; }
+  details { width:100%; }
+  summary { cursor:pointer; }
+  details input { margin-top:8px; }
+</style>
+</head>
+<body>
+<div id="banner" hidden>DeepL funktioniert nicht mehr. Es wird ein anderer Übersetzer verwendet.</div>
+<main>
+  <header class="top">
+    <div class="logo">DE</div>
+    <div>
+      <h1>Deutsch → Welt</h1>
+      <div class="sub">Schreibe auf Deutsch und drücke Enter – die Übersetzungen erscheinen darunter</div>
+    </div>
+  </header>
+
+  <section class="panel source">
+    <label><span><span class="flag">●</span> Deutsch</span><span id="count">0</span></label>
+    <textarea id="src" rows="2" placeholder="Text auf Deutsch eingeben und Enter drücken …" autofocus></textarea>
+    <div class="bar">
+      <span id="status"></span>
+      <span class="btns">
+        <button class="btn ghost" id="clear" type="button">Leeren</button>
+        <button class="btn primary" id="go" type="button">Übersetzen</button>
+      </span>
+    </div>
+  </section>
+
+  <section class="grid" id="grid"></section>
+
+  <footer>
+    <details id="settings">
+      <summary>Proxy-Einstellungen</summary>
+      <input id="proxy" placeholder="https://deepl-proxy.dein-name.workers.dev" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </details>
+    <button class="btn ghost" id="reset" type="button">Standardsprachen wiederherstellen</button>
+  </footer>
+</main>
+
+<dialog id="dlg">
+  <div class="dlg-head">
+    <h2>Sprache hinzufügen</h2>
+    <button class="icon" id="dlg-close" type="button" aria-label="Schließen">✕</button>
+  </div>
+  <div class="dlg-body">
+    <input id="q" type="search" placeholder="Suche: Russisch, Türkçe, FA …" autocomplete="off">
+    <div class="list" id="catalog"></div>
+    <div class="sect">Eigener DeepL-Code</div>
+    <div class="row">
+      <input id="cc" placeholder="Code, z. B. PT-BR" autocapitalize="characters" autocomplete="off" spellcheck="false">
+      <input id="cn" placeholder="Name (optional)" autocomplete="off">
+      <button class="btn primary" id="cadd" type="button">OK</button>
+    </div>
+    <p class="hint">Jede Zielsprache, die die DeepL-API unterstützt, kann über ihren Code hinzugefügt werden.</p>
+  </div>
+</dialog>
+
+<script>
+// ---------- Sprachkatalog (DeepL-Code → Name in der Sprache selbst) ----------
+const CATALOG = [
+  ["EN-GB","English (UK)"],["EN-US","English (US)"],["RU","Русский"],["UK","Українська"],["ES","Español"],
+  ["ES-419","Español (LatAm)"],["AR","العربية"],["FA","فارسی"],["TR","Türkçe"],["KMR","Kurdî (Kurmancî)"],
+  ["CKB","کوردی (سۆرانی)"],["FR","Français"],["IT","Italiano"],["PT-BR","Português (BR)"],["PT-PT","Português (PT)"],
+  ["NL","Nederlands"],["PL","Polski"],["CS","Čeština"],["SK","Slovenčina"],["SL","Slovenščina"],["HU","Magyar"],
+  ["RO","Română"],["BG","Български"],["EL","Ελληνικά"],["HE","עברית"],["SV","Svenska"],["DA","Dansk"],["NB","Norsk"],
+  ["FI","Suomi"],["ET","Eesti"],["LV","Latviešu"],["LT","Lietuvių"],["ID","Bahasa Indonesia"],["VI","Tiếng Việt"],
+  ["JA","日本語"],["KO","한국어"],["ZH-HANS","中文 (简体)"],["ZH-HANT","中文 (繁體)"],["HI","हिन्दी"],["BN","বাংলা"],
+  ["KK","Қазақша"],["UZ","Oʻzbekcha"],["AZ","Azərbaycanca"],["KA","ქართული"],["BE","Беларуская"],["HR","Hrvatski"],
+  ["BS","Bosanski"],["SQ","Shqip"],["SW","Kiswahili"],["TA","தமிழ்"],["TE","తెలుగు"],["MR","मराठी"],["NE","नेपाली"],
+  ["TG","Тоҷикӣ"],["KY","Кыргызча"],["MN","Монгол"],["TL","Tagalog"],["AF","Afrikaans"],["CA","Català"],["EU","Euskara"],
+  ["GL","Galego"],["GA","Gaeilge"],["CY","Cymraeg"],["EO","Esperanto"],["YI","ייִדיש"],["HA","Hausa"],["ZU","isiZulu"],
+  ["OM","Afaan Oromoo"],["ACE","Bahsa Acèh"],["AN","Aragonés"],["AS","অসমীয়া"],["AY","Aymar aru"],["BA","Башҡортса"],
+  ["BHO","भोजपुरी"],["BR","Brezhoneg"],["CEB","Cebuano"],["GN","Avañe'ẽ"],["GOM","कोंकणी"],["GU","ગુજરાતી"],
+  ["HT","Kreyòl ayisyen"],["IS","Íslenska"],["LA","Latina"],["LB","Lëtzebuergesch"],["LMO","Lombard"],["LN","Lingála"],
+  ["MAI","मैथिली"],["MG","Malagasy"],["MI","Māori"],["MK","Македонски"],["MT","Malti"],["MY","မြန်မာ"],
+  ["OC","Occitan"],["PAG","Pangasinan"],["PS","پښتو"],["SA","संस्कृतम्"],["SCN","Sicilianu"],["ST","Sesotho"],
+  ["SU","Basa Sunda"],["TH","ไทย"],["TT","Татарча"],["WO","Wolof"],["XH","isiXhosa"],["YUE","粵語"],
+  ["UR","اردو"],
+].map(([code,name]) => ({code,name}));
+
+const DEFAULTS = ["EN-GB","RU","UK","ES","AR","FA","TR","KMR"]
+  .map(c => CATALOG.find(l => l.code === c));
+
+// ---------- Speicher (localStorage, abgesichert) ----------
+const store = {
+  get(k, fb) { try { const v = localStorage.getItem(k); return v === null ? fb : JSON.parse(v); } catch { return fb; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+let langs = store.get("dt.langs.v2", null);
+if (!Array.isArray(langs) || !langs.length) langs = DEFAULTS.map(l => ({...l}));
+let proxyUrl = store.get("dt.proxy", "https://deepl-proxy.dordor167.workers.dev");
+
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const src = $("src"), grid = $("grid");
+const IDLE = "Enter = übersetzen · Shift+Enter = neue Zeile";
+
+$("proxy").value = proxyUrl;
+$("proxy").addEventListener("change", e => {
+  proxyUrl = e.target.value.trim().replace(/\/+$/, "");
+  store.set("dt.proxy", proxyUrl);
+});
+
+function setStatus(msg, isErr) {
+  const s = $("status");
+  s.className = isErr ? "err" : "";
+  s.textContent = msg;
+}
+setStatus(IDLE);
+const setBanner = on => { $("banner").hidden = !on; };
+
+// ---------- Darstellung ----------
+const results = new Map();   // code -> {text, state}
+
+function render() {
+  grid.textContent = "";
+  for (const l of langs) {
+    const card = document.createElement("article");
+    card.className = "panel card";
+    card.dataset.code = l.code;
+
+    const head = document.createElement("header");
+    const name = document.createElement("span"); name.className = "name"; name.textContent = l.name;
+    const code = document.createElement("span"); code.className = "code"; code.textContent = l.code;
+    const copy = document.createElement("button"); copy.className = "icon"; copy.type = "button"; copy.title = "Kopieren"; copy.textContent = "⧉";
+    const del = document.createElement("button"); del.className = "icon del"; del.type = "button"; del.title = "Sprache entfernen"; del.textContent = "✕";
+    head.append(name, code, copy, del);
+
+    const out = document.createElement("div");
+    out.className = "out"; out.setAttribute("dir", "auto");
+
+    copy.onclick = async () => {
+      try { await navigator.clipboard.writeText(out.textContent); copy.textContent = "✓"; }
+      catch { copy.textContent = "✗"; }
+      setTimeout(() => copy.textContent = "⧉", 1100);
+    };
+    del.onclick = () => {
+      langs = langs.filter(x => x.code !== l.code);
+      results.delete(l.code);
+      store.set("dt.langs.v2", langs);
+      render();
+    };
+
+    card.append(head, out);
+    grid.append(card);
+    paint(l.code);
+  }
+  const add = document.createElement("button");
+  add.type = "button"; add.className = "panel card add-card";
+  add.innerHTML = '<span class="plus">＋</span><span>Sprache hinzufügen</span>';
+  add.onclick = openDialog;
+  grid.append(add);
+}
+
+function paint(code) {
+  const out = grid.querySelector(`[data-code="${CSS.escape(code)}"] .out`);
+  if (!out) return;
+  const r = results.get(code);
+  out.className = "out" + (r ? (r.state === "loading" ? " loading" : r.state === "err" ? " err" : "") : "");
+  out.textContent = r && r.state !== "loading" ? r.text : "";
+}
+
+// ---------- Übersetzung ----------
+let controller;
+const cache = new Map();   // nur echte DeepL-Ergebnisse: gleicher Text kostet kein zweites Mal Zeichen
+
+async function callProxy(text, code, signal) {
+  let lastErr;
+  for (let i = 0; i < 2; i++) {
+    try {
+      const r = await fetch(proxyUrl, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, target_lang: code }), signal,
+      });
+      let data = {};
+      try { data = await r.json(); } catch {}
+      if (!r.ok) { const e = new Error(data.error || data.message || ("HTTP " + r.status)); e.status = r.status; throw e; }
+      if (!data.translations || !data.translations[0]) throw new Error("Leere Antwort");
+      return data;
+    } catch (e) {
+      if (e.name === "AbortError") throw e;
+      lastErr = e;
+      if (e.status && e.status < 500) break;   // Fehler der Anfrage: kein Wiederholen
+      await sleep(600);
+    }
+  }
+  throw lastErr;
+}
+
+// Rückgabe: "deepl" | "fallback" | "error" | "abort"
+async function translateOne(text, code, signal) {
+  const key = code + "\n" + text;
+  if (cache.has(key)) { results.set(code, { state: "ok", text: cache.get(key) }); paint(code); return "deepl"; }
+  results.set(code, { state: "loading", text: "" }); paint(code);
+  try {
+    const data = await callProxy(text, code, signal);
+    const t = data.translations[0].text;
+    results.set(code, { state: "ok", text: t }); paint(code);
+    if (data.provider === "fallback") return "fallback";
+    if (cache.size > 300) cache.clear();
+    cache.set(key, t);
+    return "deepl";
+  } catch (e) {
+    if (e.name === "AbortError") return "abort";
+    results.set(code, { state: "err", text: "Fehler: " + (e.status ? e.message : "Proxy nicht erreichbar") });
+    paint(code);
+    return "error";
+  }
+}
+
+function updateBanner(list) {
+  if (list.includes("fallback")) setBanner(true);
+  else if (list.includes("deepl")) setBanner(false);
+}
+
+async function translateAll() {
+  const text = src.value.trim();
+  if (controller) controller.abort();
+  if (!text) { results.clear(); langs.forEach(l => paint(l.code)); setStatus(IDLE); return; }
+  if (!proxyUrl) { setStatus("Bitte Proxy-URL unten eintragen", true); return; }
+  controller = new AbortController();
+  const c = controller;
+  setStatus("Übersetze …");
+  const res = await Promise.all(langs.map(l => translateOne(text, l.code, c.signal)));
+  if (c.signal.aborted) return;
+  setStatus(IDLE);
+  updateBanner(res);
+}
+
+function autoGrow() {
+  src.style.height = "auto";
+  src.style.height = Math.min(src.scrollHeight, window.innerHeight * 0.5) + "px";
+}
+
+src.addEventListener("input", () => { $("count").textContent = src.value.length; autoGrow(); });
+src.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); translateAll(); }
+});
+$("go").onclick = translateAll;
+$("clear").onclick = () => {
+  src.value = ""; $("count").textContent = "0"; autoGrow();
+  if (controller) controller.abort();
+  results.clear(); langs.forEach(l => paint(l.code)); setStatus(IDLE); src.focus();
+};
+
+// ---------- Dialog zum Hinzufügen ----------
+const dlg = $("dlg");
+function openDialog() { $("q").value = ""; $("cc").value = ""; $("cn").value = ""; fillCatalog(); dlg.showModal(); $("q").focus(); }
+$("dlg-close").onclick = () => dlg.close();
+dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
+$("q").addEventListener("input", fillCatalog);
+
+function fillCatalog() {
+  const q = $("q").value.trim().toLowerCase();
+  const box = $("catalog"); box.textContent = "";
+  const have = new Set(langs.map(l => l.code));
+  const items = CATALOG.filter(l => !have.has(l.code) &&
+    (!q || l.name.toLowerCase().includes(q) || l.code.toLowerCase().includes(q)));
+  if (!items.length) { box.textContent = "Nichts gefunden – unten per Code hinzufügen."; box.style.color = "var(--muted)"; return; }
+  box.style.color = "";
+  for (const l of items) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip";
+    b.append(l.name);
+    const s = document.createElement("small"); s.textContent = l.code; b.append(s);
+    b.onclick = () => { addLang(l); fillCatalog(); };
+    box.append(b);
+  }
+}
+
+function addLang(l) {
+  const code = l.code.toUpperCase();
+  if (langs.some(x => x.code === code)) return;
+  langs.push({ code, name: l.name || code });
+  store.set("dt.langs.v2", langs);
+  render();
+  const text = src.value.trim();
+  if (text && proxyUrl) {
+    if (!controller || controller.signal.aborted) controller = new AbortController();
+    translateOne(text, code, controller.signal).then(r => updateBanner([r]));
+  }
+}
+
+$("cadd").onclick = () => {
+  const code = $("cc").value.trim().toUpperCase();
+  if (!/^[A-Z]{2,3}(-[A-Z0-9]{2,4})?$/.test(code)) { $("cc").focus(); return; }
+  addLang({ code, name: $("cn").value.trim() || code });
+  $("cc").value = ""; $("cn").value = ""; fillCatalog();
+};
+
+$("reset").onclick = () => {
+  if (!confirm("Sprachliste auf die Standardsprachen zurücksetzen?")) return;
+  langs = DEFAULTS.map(l => ({...l}));
+  store.set("dt.langs.v2", langs);
+  results.clear(); render();
+  if (src.value.trim()) translateAll();
+};
+
+render();
+</script>
+</body>
+</html>
